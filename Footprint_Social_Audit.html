@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Footprint Social Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a working file. Stage rail on the left, one stage of work on the right, a running tally across the top. */
+:root{
+  --bg:#eceff1; --surface:#ffffff; --sunk:#f4f6f7; --ink:#15212b; --muted:#54636f; --line:#d0d8dd;
+  --accent:#0b5f73; --accent-ink:#ffffff;
+  --good:#1c7548; --warn:#9a6200; --bad:#b0352b; --na:#74818b;
+  --display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f171c; --surface:#172229; --sunk:#121b21; --ink:#e5ecf0; --muted:#9aa8b2; --line:#2b3942;
+    --accent:#5cc2d6; --accent-ink:#06222a;
+    --good:#5fcf95; --warn:#e6b04c; --bad:#f08a7c; --na:#84939d;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f171c; --surface:#172229; --sunk:#121b21; --ink:#e5ecf0; --muted:#9aa8b2; --line:#2b3942;
+  --accent:#5cc2d6; --accent-ink:#06222a;
+  --good:#5fcf95; --warn:#e6b04c; --bad:#f08a7c; --na:#84939d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:16px}
+
+/* masthead */
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:3px solid var(--ink);padding-bottom:12px}
+.mast h1{font-weight:800;font-size:1.9rem;letter-spacing:-.01em}
+.mast .sub{color:var(--muted);font-size:.92rem;max-width:52ch}
+.tally{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;color:var(--muted)}
+.tally b{font:500 1rem var(--mono);color:var(--ink);font-variant-numeric:tabular-nums;margin-right:4px}
+.tally .hot b{color:var(--bad)}
+
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px;align-items:start}
+nav.rail{position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}
+.rail a{display:flex;align-items:baseline;gap:10px;padding:9px 10px;border-radius:var(--r);text-decoration:none;color:var(--ink);border-left:3px solid transparent}
+.rail a:hover{background:var(--surface)}
+.rail a[aria-current="step"]{background:var(--surface);border-left-color:var(--accent);font-weight:600}
+.rail .n{font:500 .78rem var(--mono);color:var(--muted);width:1.4em}
+.rail .lbl{flex:1}
+.rail .ct{font:400 .75rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.rail .ct.done{color:var(--good)}
+.savenote{margin-top:14px;padding:10px;font-size:.8rem;color:var(--muted);border-top:1px solid var(--line)}
+
+main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.stagehead{display:flex;flex-direction:column;gap:6px}
+.stagehead h2{font-size:1.5rem;font-weight:700}
+.stagehead p{color:var(--muted);max-width:65ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:14px}
+.panel h3{font-size:1.02rem;font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500}
+input[type=text],input[type=url],input[type=date],select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:8px 10px;color:var(--ink);width:100%;min-width:0}
+textarea{min-height:92px;resize:vertical;line-height:1.45}
+input.mono{font-family:var(--mono);font-size:.9rem}
+.hint{font-size:.85rem;color:var(--muted);max-width:65ch}
+.callout{border-left:3px solid var(--accent);background:var(--sunk);padding:10px 12px;font-size:.9rem;border-radius:0 4px 4px 0;max-width:70ch}
+
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:8px 12px;cursor:pointer;font-weight:500}
+a.btn{text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.small{padding:4px 8px;font-size:.82rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.spread{justify-content:space-between}
+
+/* tasks */
+.task{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task input{margin-top:4px;width:17px;height:17px;accent-color:var(--accent);flex:none}
+.task code{font:400 .85rem var(--mono);background:var(--sunk);padding:1px 5px;border-radius:3px}
+
+/* accounts */
+.acct{border-left:4px solid var(--line)}
+.acct[data-d="keep"]{border-left-color:var(--good)}
+.acct[data-d="fix"]{border-left-color:var(--warn)}
+.acct[data-d="lock"]{border-left-color:var(--na)}
+.acct[data-d="delete"]{border-left-color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.88rem}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .h{font-family:var(--mono);font-size:.8rem;opacity:.75;margin-left:4px}
+
+/* criteria */
+.crit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:12px 0 12px 12px;border-bottom:1px solid var(--line);border-left:4px solid transparent}
+.crit:last-child{border-bottom:0}
+.crit[data-v="y"],.crit[data-v="clear"]{border-left-color:var(--good)}
+.crit[data-v="p"]{border-left-color:var(--warn)}
+.crit[data-v="n"],.crit[data-v="found"]{border-left-color:var(--bad)}
+.crit[data-v="na"]{border-left-color:var(--na)}
+.crit .q{font-weight:500}
+.crit .help{font-size:.85rem;color:var(--muted);max-width:62ch}
+.crit input.note{grid-column:1/-1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;align-self:start}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--line);padding:6px 10px;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.seg button:last-child{border-right:0}
+.seg button:focus-visible{outline-offset:-2px}
+.seg button[aria-pressed="true"]{color:#fff;font-weight:600}
+.seg.num button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg.num button{min-width:34px}
+.rate{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500}
+.pick{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.pick:last-child{border-bottom:0}
+.pick input{margin-top:4px;width:17px;height:17px;accent-color:var(--accent);flex:none}
+.seg button[aria-pressed="true"][data-val="y"],.seg button[aria-pressed="true"][data-val="clear"]{background:#1c7548}
+.seg button[aria-pressed="true"][data-val="p"]{background:#8a5800}
+.seg button[aria-pressed="true"][data-val="n"],.seg button[aria-pressed="true"][data-val="found"]{background:#b0352b}
+.seg button[aria-pressed="true"][data-val="na"]{background:#5d6a74}
+
+/* actions */
+.act{display:grid;grid-template-columns:auto minmax(0,1fr) 120px 150px auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.act:last-child{border-bottom:0}
+.act input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.act.done input[type=text]{text-decoration:line-through;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;padding:6px 0}
+
+/* report */
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--sunk);border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.bar .y{background:var(--good)}.bar .p{background:var(--warn)}.bar .n{background:var(--bad)}.bar .na{background:var(--na)}
+.key{display:flex;flex-wrap:wrap;gap:4px 14px;font:400 .78rem var(--mono);color:var(--muted)}
+.key span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:var(--line)}
+.key .y::before{background:var(--good)}.key .p::before{background:var(--warn)}.key .n::before{background:var(--bad)}.key .na::before{background:var(--na)}
+.acctsum{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.acctsum:last-child{border-bottom:0}
+.preview{background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:20px;overflow-x:auto}
+.preview h1{font-size:1.4rem;margin-bottom:6px}
+.preview h2{font-size:1.1rem;margin:22px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+.preview h3{font-size:.98rem;margin:14px 0 6px}
+.preview p,.preview li{max-width:70ch;margin:0 0 6px}
+.preview ul{margin:0 0 8px;padding-left:20px}
+.preview table{border-collapse:collapse;width:100%;font-size:.88rem;margin:4px 0 10px}
+.preview th,.preview td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+.preview th{font-weight:600;background:var(--surface)}
+.preview .ans{white-space:pre-wrap}
+
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:4px;font-size:.9rem;max-width:90vw;z-index:10}
+.stagenav{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+.sr{position:absolute;left:-9999px}
+
+@media (max-width:820px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  nav.rail{position:static;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
+  .rail a{border-left:0;border-bottom:3px solid transparent;white-space:nowrap;padding:8px 10px}
+  .rail a[aria-current="step"]{border-bottom-color:var(--accent)}
+  .rail .ct{display:none}
+  .savenote{display:none}
+  .crit{grid-template-columns:minmax(0,1fr)}
+  .act{grid-template-columns:auto minmax(0,1fr) auto}
+  .act select,.act input[type=date]{grid-column:2/3}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+@media print{
+  nav.rail,.mast .tally,.noprint,.stagenav,.toast{display:none!important}
+  .shell{grid-template-columns:1fr}
+  body{background:#fff}
+  .preview{border:0;padding:0;background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <h1>Footprint</h1>
+      <p class="sub">A social media audit tool.</p>
+    </div>
+    <div class="row"><div class="tally" id="tally" aria-live="polite"></div><button class="btn small noprint" data-act="dl-json">Save audit file</button></div>
+  </header>
+  <div class="shell">
+    <div>
+      <nav class="rail" id="rail" aria-label="Audit stages"></nav>
+      <p class="savenote">Everything you type stays in this browser. Nothing is uploaded. Save your audit file from the Report stage to keep a copy.</p>
+    </div>
+    <main id="main"></main>
+  </div>
+</div>
+<input type="file" id="filein" accept=".json,application/json" class="sr" aria-label="Open a saved audit file">
+<script>
+"use strict";
+/* ============================================================
+   CONTENT. Edit the audit here: stages, criteria, prompts.
+   ============================================================ */
+const STORE_KEY = "footprint-audit-v1";
+
+const STAGES = [
+  {id:"brief",    label:"Brief"},
+  {id:"benchmark",label:"Benchmark"},
+  {id:"search",   label:"Search yourself"},
+  {id:"accounts", label:"Accounts"},
+  {id:"checks",   label:"Checks"},
+  {id:"sweep",    label:"Sweep"},
+  {id:"actions",  label:"Action plan"},
+  {id:"build",    label:"Build"},
+  {id:"reflect",  label:"Reflect"},
+  {id:"report",   label:"Report"}
+];
+
+const PLATFORMS = ["LinkedIn","X","Instagram","TikTok","Bluesky","Threads","Facebook","YouTube","Substack","Portfolio site","Reddit","Other"];
+const ROLES = [["professional","Professional"],["mixed","Mixed"],["personal","Personal"]];
+const VISIBILITY = [["public","Public"],["private","Private / locked"],["mixed","Part public"]];
+const DECISIONS = [["","Not decided"],["keep","Keep as it is"],["fix","Keep and fix"],["lock","Lock down"],["delete","Delete"]];
+const ANSWERS = [["y","Yes"],["p","Partly"],["n","No"],["na","N/A"]];
+const RATING = [["1","1"],["2","2"],["3","3"],["4","4"],["5","5"]];
+const LEVELS = [["near","Two to five years ahead of me"],["far","Where I want to end up"]];
+const MAX_PROS = 3;
+const SWEEP_ANSWERS = [["clear","Checked, clear"],["found","Found something"]];
+
+const SEARCH_TASKS = [
+  {id:"t1", html:'Open a private window, signed out of everything. Search your full name in quotes: <code>"Your Name"</code>'},
+  {id:"t2", html:'Narrow it the way an editor would: <code>"Your Name" journalist</code>, then your name with your city, and with your university'},
+  {id:"t3", html:"Run the same searches on the Images tab. Note which photos of you come up and where they are hosted"},
+  {id:"t4", html:"Search every handle and username you have ever used, in quotes, including the embarrassing early ones"},
+  {id:"t5", html:"Use the search on the platform to look for yourself (while signed out). What does a stranger see?"}
+];
+const SEARCH_FIELDS = [
+  {id:"first",   label:"What does the first page of results say about you?"},
+  {id:"missing", label:"What should be there and is not? (Your best work, your portfolio, a professional profile)"},
+  {id:"notyou",  label:"Who else has your name or pops up in the searches,  and could they be mistaken for you?"},
+  {id:"surprise",label:"What did you find that you had forgotten about or did not expect?"},
+  {id:"partner", label:"If someone else searched for you, what did they find that you did not?"}
+];
+
+/* scope: pro = professional and mixed accounts, personal = personal accounts, all = every account */
+const CRITERIA = [
+  {group:"Identity", scope:"pro", intro:"Could a stranger tell in five seconds who you are and what kind of journalist you are?", items:[
+    {id:"id_name",   q:"The name matches your byline", help:"Same spelling and form everywhere you publish. If you are Kat on one and Katherine on another, pick one.", fix:"Change the display name to match your byline"},
+    {id:"id_handle", q:"The handle could sit next to a byline on air or in print", help:"Read it aloud as a presenter would. If you wince, change it.", fix:"Change the handle to something you would put beside a byline"},
+    {id:"id_photo",  q:"The photo is recent, clear and recognisably you", help:"A source meeting you outside a council chamber should know who to look for.", fix:"Replace the profile photo with a recent, clear headshot"},
+    {id:"id_bio",    q:"The bio says what you report on and where, in plain words", help:"Beat, patch, publication or course. No 'storyteller', no 'views my own' doing the heavy lifting.", fix:"Rewrite the bio: beat, patch, where you publish"},
+    {id:"id_link",   q:"It links to your portfolio or best published work", help:"One click from profile to proof you can do the job.", fix:"Add a link to your portfolio or strongest piece"},
+    {id:"id_contact",q:"A source could contact you privately within one click", help:"Open messages, an email address, or a contact link. Whistleblowers do not persevere.", fix:"Add a way for sources to contact you privately"}
+  ]},
+  {group:"Output", scope:"pro", intro:"Look at the last 20 posts, not the ones you remember fondly. The counts are prompts. What they mean depends on what you said the account is for.", items:[
+    {id:"out_recent",q:"How often you post fits what this account is for", help:"Write down when you last posted. An account for live reporting that has been silent for a month has a problem. A profile that mainly helps editors find your clips can do its job with an occasional update.", fix:"Decide how often this account needs to post to do its job, then post to that"},
+    {id:"out_ratio", q:"The mix of your last 20 posts fits what this account is for", help:"Count how many relate to journalism or your beat and write the number down. Then judge that number against the purpose you gave the account, not against a quota.", fix:"Shift the mix of posts towards what the account is for"},
+    {id:"out_own",   q:"Your own published work is pinned or easy to find", help:"If you have made something good, a visitor should hit it first.", fix:"Pin your strongest piece of work"},
+    {id:"out_native",q:"Posts are made for this platform, not pasted from another", help:"Cropped captions, dead hashtags and 'link in bio' where there is no bio link all count against you.", fix:"Stop cross-posting; make posts for this platform's format"},
+    {id:"out_engage",q:"You reply, ask and take part, as well as broadcast", help:"Look for conversations with people on your beat, not only announcements.", fix:"Reply to and engage with people on your beat each week"}
+  ]},
+  {group:"Practice", scope:"pro", intro:"Your feed is published work. Hold it to the standard of your copy.", items:[
+    {id:"pr_verify", q:"You could stand behind everything you shared in the last 20 posts", help:"Reposts count. Sharing something false with 'big if true' is still sharing it.", fix:"Remove or correct shares you cannot stand behind"},
+    {id:"pr_credit", q:"Other people's reporting, pictures and video are credited", help:"Name the reporter or outlet, link to the original, and do not lift images.", fix:"Credit and link the original source in posts that use others' work"},
+    {id:"pr_correct",q:"Errors were corrected in the open, not quietly deleted", help:"Mark N/A only if you have checked and found none.", fix:"Post a visible correction for the error you found"},
+    {id:"pr_impart", q:"Nothing here breaks the social media rules of the employer you want", help:"Find the published guidance of your target employer and read it against your feed. Broadcasters bound by due impartiality are the strictest.", fix:"Read your target employer's social media guidance and remove posts that breach it"},
+    {id:"pr_network",q:"You follow the institutions, sources and reporters on your beat", help:"Councillors, press offices, campaign groups, rival reporters. Your following list is a contacts book.", fix:"Follow the key institutions, sources and reporters on your beat"}
+  ]},
+  {group:"Security and privacy", scope:"all", intro:"A hijacked account publishes under your name. Check the settings; do not answer from memory.", items:[
+    {id:"se_2fa",    q:"Two-step verification is on, using an app or key rather than text message", help:"Open the security settings and look.", fix:"Turn on two-step verification with an authenticator app"},
+    {id:"se_pw",     q:"The password is unique to this account and kept in a password manager", help:"If you could type it from memory, it is probably reused.", fix:"Set a unique password and store it in a password manager"},
+    {id:"se_recover",q:"The recovery email and phone number are current and yours", help:"Old university addresses and a parent's phone both fail this.", fix:"Update the recovery email and phone number"},
+    {id:"se_apps",   q:"You have reviewed and removed third-party apps with access", help:"Quiz apps, old schedulers and 'who unfollowed me' tools all linger.", fix:"Revoke third-party app access you no longer use"},
+    {id:"se_where",  q:"Your posts do not give away your home address, routine or live location", help:"Check geotags, views from windows, gym check-ins and regular run routes.", fix:"Remove location data and posts that reveal home or routine"},
+    {id:"se_tags",   q:"You control who can tag you, and have reviewed what you are tagged in", help:"Other people's photos are part of your footprint.", fix:"Set tagging to approval-only and untag where needed"}
+  ]},
+  {group:"Boundary", scope:"personal", intro:"A personal account is only personal if the wall holds.", items:[
+    {id:"bo_locked", q:"Signed out, a stranger sees only what you intend", help:"Test in a private window. Do not trust the settings page.", fix:"Tighten privacy settings and re-test while signed out"},
+    {id:"bo_link",   q:"Nothing connects this account to your professional ones unless you mean it to", help:"Shared handle, same photo, cross-links, mutual follows with your work accounts.", fix:"Break the links between this account and your professional ones"},
+    {id:"bo_follow", q:"You know who your followers are", help:"Scroll the list. Remove the people you cannot place.", fix:"Remove followers you cannot identify"}
+  ]}
+];
+
+const SWEEP = [
+  {id:"sw_old",    q:"Old posts", help:"Search your own history on each platform for swearing, slurs, drunk posting and jokes that have aged badly. Go back to the beginning."},
+  {id:"sw_likes",  q:"Likes, reposts and follows", help:"On many platforms these are public. Read them as a hostile stranger would."},
+  {id:"sw_tagged", q:"Tagged photos and other people's posts about you", help:"Check friends' and family accounts, club pages and student society albums."},
+  {id:"sw_ghosts", q:"Forgotten accounts", help:"Old usernames, abandoned blogs, forums, gaming profiles, review sites, a second account you set up at 15."},
+  {id:"sw_legal",  q:"Legal risk", help:"Posts about live court cases, or claims about named people you could not prove. Apply what you know about contempt and defamation to your own feed."},
+  {id:"sw_partisan",q:"Partisan positions", help:"Party political endorsement, campaign badges, petition shares. Decide what you would say if an editor asked about each."},
+  {id:"sw_personal",q:"Personal data", help:"Phone number, address, date of birth, family members' names and schools, visible in posts or profiles."},
+  {id:"sw_others", q:"Other people's rights", help:"Photos of people who did not agree to be posted, and images or music you had no right to use."},
+  {id:"sw_claims", q:"Consistency", help:"Job titles, dates and bylines should match across your CV, LinkedIn and every bio."},
+  {id:"sw_cache",  q:"What search engines still hold", help:"Deleted posts and old profile photos can survive in search results and archives. Check after you delete."}
+];
+
+const REFLECT = [
+  {id:"r1", q:"Before you started, what did you expect an editor to find? What did they actually find?"},
+  {id:"r2", q:"Which single finding bothered you most, and why that one?"},
+  {id:"r3", q:"What have you decided not to change, and what might that cost you?"},
+  {id:"r4", q:"Where does the journalist stop and the private person start across your accounts? Who drew that line: you, a platform, or an employer you do not yet have?"},
+  {id:"r5", q:"What will you check again, and when?"}
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+function blank(){
+  return {v:1, meta:{name:"",date:new Date().toISOString().slice(0,10),aim:"",employer:""},
+    search:{tasks:{},notes:{}}, accounts:[], pros:[], sweep:{}, actions:[], reflect:{}, submit:{handles:false,reflect:true,share:{}}};
+}
+let state = blank();
+let stage = "brief";
+let currentAcct = null;
+let armed = null;
+let reportMode = "submit";
+
+function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) state = normalise(JSON.parse(raw));
+  }catch(e){ /* storage unavailable: carry on in memory */ }
+}
+function normalise(s){
+  const b = blank();
+  if(!s || typeof s!=="object") return b;
+  return {v:1, meta:Object.assign(b.meta,s.meta||{}),
+    search:{tasks:(s.search&&s.search.tasks)||{},notes:(s.search&&s.search.notes)||{}},
+    accounts:Array.isArray(s.accounts)?s.accounts.map(a=>Object.assign({id:uid("a"),platform:"Other",handle:"",url:"",role:"professional",visibility:"public",lastPost:"",decision:"",why:"",purpose:"",bio:"",enjoy:"",utility:"",develop:false,dev:{},nums:{},checks:{}},a)):[],
+    pros:Array.isArray(s.pros)?s.pros.map(x=>Object.assign({id:uid("p"),name:"",role:"",level:"near",platform:"LinkedIn",url:"",why:"",bio:"",mix:"",steal:"",avoid:"",only:""},x)):[],
+    sweep:s.sweep||{}, actions:Array.isArray(s.actions)?s.actions:[], reflect:s.reflect||{}, submit:Object.assign({handles:false,reflect:true},s.submit||{},{share:(s.submit&&s.submit.share)||{}})};
+}
+let saveTimer=null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{ try{ localStorage.setItem(STORE_KEY,JSON.stringify(state)); }catch(e){} },250);
+}
+function resolve(path){
+  const seg=path.split("."); let o=state;
+  for(let i=0;i<seg.length-1;i++){
+    const k=seg[i];
+    if(Array.isArray(o)) o=o.find(x=>x.id===k);
+    else { if(o[k]==null || typeof o[k]!=="object") o[k]={}; o=o[k]; }
+    if(!o) return [null,null];
+  }
+  return [o,seg[seg.length-1]];
+}
+function setPath(path,val){ const [o,k]=resolve(path); if(o) o[k]=val; }
+function getPath(path){ const [o,k]=resolve(path); return o?o[k]:undefined; }
+
+/* ============================================================
+   DERIVED
+   ============================================================ */
+function groupsFor(acc){
+  const personal = acc.role==="personal";
+  return CRITERIA.filter(g=>g.scope==="all" || (personal? g.scope==="personal" : g.scope==="pro"));
+}
+function critsFor(acc){ return groupsFor(acc).flatMap(g=>g.items); }
+function countsFor(acc){
+  const c={y:0,p:0,n:0,na:0,blank:0,total:0};
+  critsFor(acc).forEach(it=>{ c.total++; const v=(acc.checks[it.id]||{}).v; if(v) c[v]++; else c.blank++; });
+  return c;
+}
+function acctName(a){ return a.platform + (a.handle?(" "+a.handle):""); }
+function totals(){
+  const t={accounts:state.accounts.length,answered:0,total:0,work:0,found:0,sweepDone:0,open:0};
+  state.accounts.forEach(a=>{ const c=countsFor(a); t.total+=c.total; t.answered+=c.total-c.blank; t.work+=c.n+c.p; });
+  SWEEP.forEach(s=>{ const v=(state.sweep[s.id]||{}).v; if(v) t.sweepDone++; if(v==="found") t.found++; });
+  t.open=state.actions.filter(a=>!a.done).length;
+  return t;
+}
+function isEmpty(){ return !state.meta.name && !state.accounts.length && !Object.keys(state.reflect).length; }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $main=document.getElementById("main"), $rail=document.getElementById("rail"), $tally=document.getElementById("tally");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function opts(list,cur){ return list.map(o=>{ const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}"${v===cur?" selected":""}>${esc(l)}</option>`; }).join(""); }
+function field(label,path,type,extra){
+  const v=getPath(path)||"";
+  return `<label class="f">${esc(label)}<input type="${type||"text"}" data-bind="${path}" value="${esc(v)}" ${extra||""}></label>`;
+}
+function area(label,path){
+  return `<label class="f">${esc(label)}<textarea data-bind="${path}">${esc(getPath(path)||"")}</textarea></label>`;
+}
+function seg(path,answers,label,cls){
+  const cur=getPath(path);
+  return `<div class="seg${cls?" "+cls:""}" role="group" aria-label="${esc(label)}">`+answers.map(([v,l])=>
+    `<button type="button" data-act="answer" data-path="${path}" data-val="${v}" data-fid="${path}:${v}" aria-pressed="${cur===v}">${l}</button>`).join("")+`</div>`;
+}
+function head(title,text){ return `<div class="stagehead"><h2>${esc(title)}</h2><p>${text}</p></div>`; }
+function stageNav(){
+  const i=STAGES.findIndex(s=>s.id===stage), prev=STAGES[i-1], next=STAGES[i+1];
+  return `<div class="stagenav noprint">${prev?`<a class="btn" href="#${prev.id}">Back: ${esc(prev.label)}</a>`:"<span></span>"}${next?`<a class="btn primary" href="#${next.id}" style="text-decoration:none">Next: ${esc(next.label)}</a>`:""}</div>`;
+}
+
+function renderChrome(){
+  const t=totals();
+  const rcount=REFLECT.filter(r=>(state.reflect[r.id]||"").trim()).length;
+  const tdone=SEARCH_TASKS.filter(x=>state.search.tasks[x.id]).length;
+  const ct={
+    brief:(state.meta.name&&state.meta.aim)?["done",true]:["",false],
+    search:[tdone+"/"+SEARCH_TASKS.length,tdone===SEARCH_TASKS.length],
+    accounts:[String(t.accounts),t.accounts>0],
+    benchmark:[state.pros.length+"/"+MAX_PROS, state.pros.length>0 && state.pros.every(p=>(p.steal||"").trim()&&(p.avoid||"").trim()&&(p.only||"").trim())],
+    checks:[t.total?t.answered+"/"+t.total:"",t.total>0&&t.answered===t.total],
+    sweep:[t.sweepDone+"/"+SWEEP.length,t.sweepDone===SWEEP.length],
+    actions:[state.actions.length?t.open+" open":"",state.actions.length>0&&t.open===0],
+    build:[(()=>{const n=state.accounts.filter(a=>a.develop).length; return n?n+" picked":"";})(), state.accounts.some(a=>a.develop) && state.accounts.filter(a=>a.develop).every(a=>a.dev&&(a.dev.a||"").trim()&&(a.dev.r||"").trim())],
+    reflect:[rcount+"/"+REFLECT.length,rcount===REFLECT.length],
+    report:["",false]
+  };
+  $rail.innerHTML=STAGES.map((s,i)=>`<a href="#${s.id}"${s.id===stage?' aria-current="step"':""}><span class="n">${i+1}</span><span class="lbl">${esc(s.label)}</span><span class="ct${ct[s.id][1]?" done":""}">${esc(ct[s.id][0])}</span></a>`).join("");
+  $tally.innerHTML=`<span><b>${t.accounts}</b>accounts</span><span><b>${t.answered}/${t.total}</b>checks answered</span><span class="${t.work?"hot":""}"><b>${t.work}</b>need work</span><span class="${t.found?"hot":""}"><b>${t.found}</b>sweep finds</span><span><b>${t.open}</b>actions open</span>`;
+}
+
+const VIEWS={
+  brief(){
+    return head("Brief","Set the terms before you look. An audit needs a standard to measure against, and yours is the job you want.")+
+    `<div class="panel"><div class="grid2">${field("Your name, as you want it on a byline","meta.name")}${field("Date of audit","meta.date","date")}</div>
+      ${field("The job you want in two years (role and beat)","meta.aim","text",'placeholder="e.g. Local democracy reporter covering Greater Manchester"')}
+      ${field("An employer you would like to work for","meta.employer","text",'placeholder="You will check your accounts against their social media rules"')}
+    </div>
+    <div class="panel"><h3>How this works</h3>
+      <p class="hint">Ten stages. Find people already doing the job you want, search for yourself as a stranger would, list every account you hold and record where each one stands today, test your accounts against a set of checks, and sweep for the things people get sacked over. Then turn what you found into a plan, choose one or two accounts you want to build, and reflect on it. This is more than one sitting. Save your audit file every time you stop, using the button at the top, and open it again when you come back. Do it honestly. Answering Yes to everything produces a report with nothing in it.</p>
+      <p class="callout">This file is yours. Nothing you type leaves this browser, and the summary you hand in leaves out your handles, bios and notes unless you choose to include them. Record what you found, not what you wish you had found.</p>
+      ${isEmpty()?`<div class="row"><button class="btn" data-act="example" data-fid="example">Load a worked example</button><button class="btn" data-act="open" data-fid="open">Open a saved audit file</button></div>`:""}
+    </div>`;
+  },
+  search(){
+    return head("Search yourself","An editor deciding whether to interview you will spend about a minute on this. So will a source deciding whether to trust you. Do what they do.")+
+    `<div class="panel"><h3>Do these in order</h3><div>${SEARCH_TASKS.map(t=>`<label class="task"><input type="checkbox" data-bind="search.tasks.${t.id}"${state.search.tasks[t.id]?" checked":""}><span>${t.html}</span></label>`).join("")}</div></div>
+    <div class="panel"><h3>What you found</h3>${SEARCH_FIELDS.map(f=>area(f.label,"search.notes."+f.id)).join("")}
+    <p class="hint">Any account you turned up that you had forgotten goes in the next stage.</p></div>`;
+  },
+  accounts(){
+    const cards=state.accounts.map(a=>`<div class="panel acct" data-d="${esc(a.decision)}">
+      <div class="grid2">
+        <label class="f">Platform<select data-bind="accounts.${a.id}.platform">${opts(PLATFORMS,a.platform)}</select></label>
+        ${field("Handle or profile name",`accounts.${a.id}.handle`,"text",'class="mono" placeholder="@handle"')}
+        ${field("Link",`accounts.${a.id}.url`,"url",'class="mono" placeholder="https://"')}
+      </div>
+      ${field("What is this account for? One sentence",`accounts.${a.id}.purpose`,"text",'placeholder="e.g. Where editors find my clips"')}
+      ${area("Public bio, copied exactly as it appears today",`accounts.${a.id}.bio`)}
+      <div class="row" style="gap:10px 28px">
+        <div class="rate"><span>How much do you enjoy using it? (1 low, 5 high)</span>${seg(`accounts.${a.id}.enjoy`,RATING,"Enjoyment, 1 low to 5 high","num")}</div>
+        <div class="rate"><span>How useful is it to you professionally? (1 low, 5 high)</span>${seg(`accounts.${a.id}.utility`,RATING,"Professional usefulness, 1 low to 5 high","num")}</div>
+      </div>
+      <div class="grid2">
+        ${field("Followers, connections or subscribers today",`accounts.${a.id}.nums.followers`,"text",'class="mono" inputmode="numeric"')}
+        ${field("Following today",`accounts.${a.id}.nums.following`,"text",'class="mono" inputmode="numeric"')}
+        ${field("Posts to date",`accounts.${a.id}.nums.posts`,"text",'class="mono" inputmode="numeric"')}
+      </div>
+      <div class="grid2">
+        <label class="f">Type<select data-bind="accounts.${a.id}.role">${opts(ROLES,a.role)}</select></label>
+        <label class="f">Who can see it<select data-bind="accounts.${a.id}.visibility">${opts(VISIBILITY,a.visibility)}</select></label>
+        ${field("Last posted",`accounts.${a.id}.lastPost`,"date")}
+        <label class="f">Decision<select data-bind="accounts.${a.id}.decision">${opts(DECISIONS,a.decision)}</select></label>
+      </div>
+      ${field("Why that decision?",`accounts.${a.id}.why`)}
+      <div class="row spread"><a class="btn small" href="#checks" data-act="pick" data-id="${a.id}">Run the checks on this account</a>
+      <button class="btn small danger" data-act="rmacct" data-id="${a.id}" data-fid="rm:${a.id}">${armed==="rm:"+a.id?"Click again to remove":"Remove"}</button></div>
+    </div>`).join("");
+    return head("Accounts","List every account you hold, including dormant and personal ones. An account you leave off the list is still on the internet.")+
+    `<div class="panel"><h3>Add an account</h3><div class="chips">${PLATFORMS.map(p=>`<button class="chip" data-act="addacct" data-p="${esc(p)}" data-fid="add:${esc(p)}">+ ${esc(p)}</button>`).join("")}</div>
+    <p class="hint">What an account is for decides which checks it gets. Professional and mixed accounts are tested on identity, output and practice. Personal accounts are tested on whether the wall around them holds. Copy the bio, note the numbers as they stand today and give the two ratings before you change anything. That is your baseline, and you cannot get it back later. Leave the decision until you have run the checks.</p></div>`+
+    (cards||`<div class="panel"><p class="empty">No accounts yet. Start with the ones your search turned up.</p></div>`);
+  },
+  benchmark(){
+    const cards=state.pros.map(p=>`<div class="panel acct">
+      <div class="grid2">${field("Name",`pros.${p.id}.name`)}${field("Job and employer",`pros.${p.id}.role`)}
+        <label class="f">How far ahead of you<select data-bind="pros.${p.id}.level">${opts(LEVELS,p.level)}</select></label></div>
+      <div class="grid2"><label class="f">Platform you looked at<select data-bind="pros.${p.id}.platform">${opts(PLATFORMS,p.platform)}</select></label>
+        ${field("Link",`pros.${p.id}.url`,"url",'class="mono" placeholder="https://"')}</div>
+      ${field("Why this person?",`pros.${p.id}.why`)}
+      ${area("Their public bio, copied exactly",`pros.${p.id}.bio`)}
+      ${area("Their last 20 posts: roughly how many are their own work, other people's work, conversation, and personal?",`pros.${p.id}.mix`)}
+      ${area("One thing they do that you will take",`pros.${p.id}.steal`)}
+      ${area("One thing they do that you would not",`pros.${p.id}.avoid`)}
+      ${area("One thing that only works because of who they already are",`pros.${p.id}.only`)}
+      <div class="row" style="justify-content:flex-end"><button class="btn small danger" data-act="rmpro" data-id="${p.id}" data-fid="rmp:${p.id}">${armed==="rmp:"+p.id?"Click again to remove":"Remove"}</button></div>
+    </div>`).join("");
+    return head("Benchmark","Find up to three people who are doing the job you want, and look at how they present themselves. They are the standard you will judge your own accounts against in the stages that follow.")+
+    `<div class="panel"><h3>Who to pick</h3>
+      <p class="hint">Choose people two to five years ahead of you, doing the job at the level you would enter it. A national political editor has an audience and an employer you do not, so their feed will teach you very little. Allow yourself one long-range pick at most.</p>
+      <p class="hint">If a partner found this person for you, say so under "Why this person?" and say whether you agree with their choice.</p>
+      <p class="hint">Look only at what they publish in public. You are studying their practice, not them. A good reporter can have a poor feed: if that is what you find, write it down.</p>
+      <div class="row"><button class="btn primary" data-act="addpro" data-fid="addpro">Add a person${state.pros.length?` (${state.pros.length} of ${MAX_PROS})`:""}</button></div>
+    </div>`+
+    (cards||`<div class="panel"><p class="empty">No one added yet. Search the job title you put in your Brief, or look at who has the byline on the stories you wish you had written.</p></div>`);
+  },
+  checks(){
+    if(!state.accounts.length) return head("Checks","Each account is tested against the same criteria.")+`<div class="panel"><p class="empty">Add at least one account first.</p><div><a class="btn primary" href="#accounts" style="text-decoration:none">Go to Accounts</a></div></div>`;
+    let acc=state.accounts.find(a=>a.id===currentAcct); if(!acc){ acc=state.accounts[0]; currentAcct=acc.id; }
+    const c=countsFor(acc);
+    const picker=state.accounts.map(a=>{ const k=countsFor(a); return `<button class="chip" data-act="pick" data-id="${a.id}" data-fid="pick:${a.id}" aria-pressed="${a.id===acc.id}">${esc(a.platform)}<span class="h">${esc(a.handle)} ${k.total-k.blank}/${k.total}</span></button>`; }).join("");
+    const groups=groupsFor(acc).map(g=>`<div class="panel"><div><h3>${esc(g.group)}</h3><p class="hint">${esc(g.intro)}</p></div><div>${g.items.map(it=>{
+      const p=`accounts.${acc.id}.checks.${it.id}`;
+      return `<div class="crit" data-v="${esc(getPath(p+".v")||"")}"><div><p class="q">${esc(it.q)}</p><p class="help">${esc(it.help)}</p></div>${seg(p+".v",ANSWERS,it.q)}<input type="text" class="note" data-bind="${p}.note" value="${esc(getPath(p+".note")||"")}" placeholder="Evidence: what you saw, counted or changed" aria-label="Evidence for: ${esc(it.q)}"></div>`;
+    }).join("")}</div></div>`).join("");
+    return head("Checks","Open each account in another tab and look before you answer. Write what you saw in the evidence line; a bare Yes proves nothing to anyone, including you.")+
+    `<div class="panel"><div class="chips" role="group" aria-label="Choose an account">${picker}</div>
+      <div class="row spread"><p class="hint"><strong>${esc(acctName(acc))}</strong> is marked ${esc(acc.role)}, so it gets ${c.total} checks. ${acc.purpose?`You said it is for: ${esc(acc.purpose)}`:`You have not said what it is for. Do that on the Accounts stage first, because several checks ask you to judge against it.`}</p>${bar(c)}</div></div>`+groups;
+  },
+  sweep(){
+    return head("Sweep","These cut across every account. They are the things that surface the week you get a job, or the week you break a story someone powerful dislikes.")+
+    `<div class="panel"><div>${SWEEP.map(s=>{ const p=`sweep.${s.id}`;
+      return `<div class="crit" data-v="${esc(getPath(p+".v")||"")}"><div><p class="q">${esc(s.q)}</p><p class="help">${esc(s.help)}</p></div>${seg(p+".v",SWEEP_ANSWERS,s.q)}<input type="text" class="note" data-bind="${p}.note" value="${esc(getPath(p+".note")||"")}" placeholder="Where you looked and what you found. Keep it general if you would rather not record detail" aria-label="Notes for: ${esc(s.q)}"></div>`;
+    }).join("")}</div></div>`;
+  },
+  actions(){
+    const rows=state.actions.map(a=>`<div class="act${a.done?" done":""}">
+      <input type="checkbox" data-bind="actions.${a.id}.done"${a.done?" checked":""} aria-label="Done">
+      <input type="text" data-bind="actions.${a.id}.text" value="${esc(a.text)}" aria-label="Action">
+      <select data-bind="actions.${a.id}.priority" aria-label="Priority">${opts([["now","This week"],["soon","This month"],["later","Before I apply"]],a.priority)}</select>
+      <input type="date" data-bind="actions.${a.id}.due" value="${esc(a.due||"")}" aria-label="Due date">
+      <button class="btn small danger" data-act="rmaction" data-id="${a.id}" data-fid="rma:${a.id}" aria-label="Remove action">Remove</button></div>`).join("");
+    const pending=pendingActions().length;
+    return head("Action plan","Findings are worth nothing until something changes. Pull in every check you marked No or Partly and every sweep find, then cut the list down to what you will really do.")+
+    `<div class="panel"><div class="row"><button class="btn primary" data-act="pull" data-fid="pull">Pull in from the audit${pending?` (${pending} new)`:""}</button><button class="btn" data-act="addaction" data-fid="addaction">Add your own</button></div>
+    <div>${rows||`<p class="empty">No actions yet.</p>`}</div>
+    <p class="hint">Rewrite each action in your own words. Removing an action is a legitimate choice, as long as you can say why in the next stage.</p></div>`;
+  },
+  build(){
+    if(!state.accounts.length) return head("Build","Decide what you want to grow, not only what you need to repair.")+`<div class="panel"><p class="empty">Add at least one account first.</p><div><a class="btn primary" href="#accounts">Go to Accounts</a></div></div>`;
+    const picks=state.accounts.filter(a=>a.develop);
+    const chips=state.accounts.map(a=>`<button class="chip" data-act="develop" data-id="${a.id}" data-fid="dev:${a.id}" aria-pressed="${!!a.develop}">${esc(a.platform)}<span class="h">${esc(a.handle)} · enjoy ${esc(a.enjoy||"?")} · useful ${esc(a.utility||"?")}</span></button>`).join("");
+    const forms=picks.map(a=>{ const p=`accounts.${a.id}.dev`; return `<div class="panel"><div><h3>${esc(acctName(a))}</h3>${a.purpose?`<p class="hint">For: ${esc(a.purpose)}</p>`:""}</div>
+      ${area("Strength: what already works here that you can build on?",p+".s")}
+      ${area("Opportunity: who could this reach, or what could it do for you, that it does not yet?",p+".o")}
+      ${area("Aspiration: where do you want this account to be in six months?",p+".a")}
+      ${area("Result: how will you know? Name something you can count or point to.",p+".r")}</div>`; }).join("");
+    return head("Build","The action plan repairs what is wrong. This stage is for what you want to make. Choose one or two accounts worth investing in and set each a six-month goal.")+
+    `<div class="panel"><h3>Pick one or two accounts to develop</h3><div class="chips" role="group" aria-label="Accounts to develop">${chips}</div>
+    <p class="hint">Use your two ratings. An account you enjoy and find useful is the obvious choice. One that is useful but joyless needs a reason to keep going, and one you enjoy but get nothing from professionally may be fine exactly as it is.</p></div>`+
+    (forms||`<div class="panel"><p class="empty">No account chosen yet.</p></div>`);
+  },
+  reflect(){
+    return head("Reflect","Write these last and write them properly. The checks tell you what your accounts look like. This part is where you work out what you think about that.")+
+    `<div class="panel">${REFLECT.map(r=>area(r.q,"reflect."+r.id)).join("")}</div>`;
+  },
+  report(){
+    const sums=state.accounts.map(a=>{ const c=countsFor(a); return `<div class="acctsum"><div class="row spread"><strong>${esc(acctName(a))}</strong><span class="hint">${esc(a.role)} · ${esc((DECISIONS.find(d=>d[0]===a.decision)||["","Not decided"])[1])}</span></div>${bar(c)}<div class="key"><span class="y">${c.y} yes</span><span class="p">${c.p} partly</span><span class="n">${c.n} no</span><span class="na">${c.na} n/a</span><span>${c.blank} unanswered</span></div></div>`; }).join("");
+    const top=window.self===window.top, sub=reportMode==="submit", cands=sub?shareCandidates():[], name=sub?"summary":"full audit";
+    return head("Report","Two documents. The submission summary is what you hand in: your decisions, your reasons and your plans, with only the examples you choose to show. The full audit is your working record and stays with you. The counts describe your accounts; they are not a mark.")+
+    `<div class="panel noprint"><h3>By account</h3><div>${sums||`<p class="empty">No accounts audited yet.</p>`}</div></div>
+    <div class="panel noprint">
+      <div class="chips" role="group" aria-label="Choose a document"><button class="chip" data-act="mode" data-m="submit" data-fid="mode:submit" aria-pressed="${sub}">Submission summary</button><button class="chip" data-act="mode" data-m="full" data-fid="mode:full" aria-pressed="${!sub}">Full audit (private)</button></div>
+      ${sub?`<p class="hint">The summary leaves out your search notes, bios, numbers, evidence lines and sweep notes. It does name the people you benchmarked against. Read the preview before you send it. Anything you typed into a decision, an action, a goal or a reflection goes in as you wrote it.</p>
+      <div><label class="pick"><input type="checkbox" data-bind="submit.handles"${state.submit.handles?" checked":""}><span>Name my accounts. Leave this off and your handles and links are replaced with [account] wherever they appear.</span></label>
+      <label class="pick"><input type="checkbox" data-bind="submit.reflect"${state.submit.reflect?" checked":""}><span>Include my reflection.</span></label></div>
+      <div><h3>Examples to share</h3><p class="hint">Tick any finding you are willing to show as evidence. Nothing here is shared unless you tick it.</p>
+      ${cands.length?cands.map(c=>`<label class="pick"><input type="checkbox" data-bind="submit.share.${c.key}"${state.submit.share[c.key]?" checked":""}><span><strong>${esc(c.where)}</strong>: ${esc(c.q)}. ${esc(c.result)}. ${esc(c.note)}</span></label>`).join(""):`<p class="empty">Nothing to choose from yet. Findings that have an evidence note appear here.</p>`}</div>`
+      :`<p class="hint">Everything you recorded, including handles, bios and sweep notes. Keep it for yourself. Hand it in only if you are asked to and are content for all of it to be read.</p>`}
+      <div class="row"><button class="btn primary" data-act="dl-html" data-fid="dl-html">Download ${name} (.html)</button><button class="btn" data-act="dl-md" data-fid="dl-md">Download ${name} (.md)</button><button class="btn" data-act="copy" data-fid="copy">Copy ${name} text</button>${top?`<button class="btn" data-act="print" data-fid="print">Print or save as PDF</button>`:""}</div>
+      <p class="hint">The .html file opens in any browser and in Word, and prints to PDF from there.</p>
+    </div>
+    <div class="panel noprint"><h3>Your working file</h3>
+      <div class="row"><button class="btn" data-act="dl-json" data-fid="dl-json">Save audit file (.json)</button><button class="btn" data-act="open" data-fid="open">Open a saved audit file</button><button class="btn danger" data-act="reset" data-fid="reset">${armed==="reset"?"Click again to erase everything":"Start again"}</button></div>
+      <p class="hint">The audit file holds all your work in progress. Save one whenever you stop, because browser storage can be cleared without warning.</p>
+    </div>
+    <div class="preview">${blocksToHTML(sub?buildSummary():buildReport())}</div>`;
+  }
+};
+function bar(c){
+  if(!c.total) return "";
+  const w=k=>`<i class="${k}" style="width:${(c[k]/c.total*100).toFixed(2)}%"></i>`;
+  return `<div class="bar" style="flex:1;min-width:140px" role="img" aria-label="${c.y} yes, ${c.p} partly, ${c.n} no, ${c.na} not applicable, ${c.blank} unanswered">${w("y")}${w("p")}${w("n")}${w("na")}</div>`;
+}
+function render(){
+  const ae=document.activeElement, key=ae&&(ae.dataset.fid?`[data-fid="${cssq(ae.dataset.fid)}"]`:ae.dataset.bind?`[data-bind="${cssq(ae.dataset.bind)}"]`:null);
+  $main.innerHTML=VIEWS[stage]()+stageNav();
+  renderChrome();
+  if(key){ const el=$main.querySelector(key); if(el) el.focus({preventScroll:true}); }
+}
+function cssq(s){ return String(s).replace(/["\\]/g,"\\$&"); }
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function pendingActions(){
+  const have=new Set(state.actions.map(a=>a.src).filter(Boolean)), out=[];
+  state.accounts.forEach(acc=>critsFor(acc).forEach(it=>{
+    const ch=acc.checks[it.id]||{}; const src=acc.id+":"+it.id;
+    if((ch.v==="n"||ch.v==="p") && !have.has(src)) out.push({id:uid("x"),src,text:acctName(acc)+": "+it.fix,priority:ch.v==="n"?"now":"soon",due:"",done:false});
+  }));
+  SWEEP.forEach(s=>{ const sw=state.sweep[s.id]||{}; const src="sweep:"+s.id;
+    if(sw.v==="found" && !have.has(src)) out.push({id:uid("x"),src,text:s.q+": deal with what you found",priority:"now",due:"",done:false}); });
+  state.accounts.forEach(acc=>{ const src=acc.id+":decision";
+    if((acc.decision==="delete"||acc.decision==="lock") && !have.has(src)) out.push({id:uid("x"),src,text:acctName(acc)+": "+(acc.decision==="delete"?"download your data, then delete the account":"lock the account down and re-test signed out"),priority:"soon",due:"",done:false}); });
+  return out;
+}
+function arm(key){ if(armed===key){ armed=null; return true; } armed=key; setTimeout(()=>{ if(armed===key){ armed=null; render(); } },4000); render(); return false; }
+
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]"); if(!el) return;
+  const act=el.dataset.act, id=el.dataset.id;
+  if(act==="answer"){ const cur=getPath(el.dataset.path); setPath(el.dataset.path, cur===el.dataset.val?"":el.dataset.val); }
+  else if(act==="addacct"){ const a={id:uid("a"),platform:el.dataset.p,handle:"",url:"",role:el.dataset.p==="LinkedIn"||el.dataset.p==="Portfolio site"?"professional":"mixed",visibility:"public",lastPost:"",decision:"",why:"",checks:{}}; state.accounts.push(a); currentAcct=a.id; }
+  else if(act==="rmacct"){ if(!arm("rm:"+id)) return; state.accounts=state.accounts.filter(a=>a.id!==id); state.actions=state.actions.filter(a=>!(a.src||"").startsWith(id+":")); }
+  else if(act==="pick"){ currentAcct=id; if(el.tagName==="A"){ save(); return; } }
+  else if(act==="pull"){ const p=pendingActions(); state.actions.push(...p); toast(p.length?p.length+" actions added":"Nothing new to add. Mark checks No or Partly first."); }
+  else if(act==="addaction"){ state.actions.push({id:uid("x"),src:"",text:"",priority:"soon",due:"",done:false}); }
+  else if(act==="rmaction"){ state.actions=state.actions.filter(a=>a.id!==id); }
+  else if(act==="addpro"){ if(state.pros.length>=MAX_PROS){ toast("Three is enough. Remove one before you add another."); return; } state.pros.push({id:uid("p"),name:"",role:"",level:"near",platform:"LinkedIn",url:"",why:"",bio:"",mix:"",steal:"",avoid:"",only:""}); }
+  else if(act==="rmpro"){ if(!arm("rmp:"+id)) return; state.pros=state.pros.filter(p=>p.id!==id); }
+  else if(act==="develop"){ const a=state.accounts.find(x=>x.id===id); if(!a) return; if(!a.develop && state.accounts.filter(x=>x.develop).length>=2){ toast("One or two only. Drop one before you add another."); return; } a.develop=!a.develop; }
+  else if(act==="mode"){ reportMode=el.dataset.m; }
+  else if(act==="example"){ state=normalise(exampleState()); currentAcct=null; toast("Worked example loaded. Use Start again on the Report stage to clear it."); }
+  else if(act==="reset"){ if(!arm("reset")) return; state=blank(); currentAcct=null; location.hash="brief"; }
+  else if(act==="open"){ document.getElementById("filein").click(); return; }
+  else if(act==="dl-md"){ saveFile(curStem()+".md", blocksToMD(curBlocks())); return; }
+  else if(act==="dl-html"){ saveFile(curStem()+".html", reportDoc(curBlocks())); return; }
+  else if(act==="dl-json"){ saveFile(fileStem()+".json", JSON.stringify(state,null,2)); return; }
+  else if(act==="copy"){ copyText(blocksToMD(curBlocks())); return; }
+  else if(act==="print"){ try{ window.print(); }catch(err){} return; }
+  save(); render();
+});
+document.addEventListener("input",e=>{
+  const el=e.target; if(!el.dataset || !el.dataset.bind) return;
+  if(el.type==="checkbox"){ setPath(el.dataset.bind,el.checked); save(); render(); }
+  else if(el.tagName==="SELECT"){ setPath(el.dataset.bind,el.value); save(); render(); }
+  else { setPath(el.dataset.bind,el.value); save(); renderChrome(); }
+});
+document.getElementById("filein").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s || !s.meta || !Array.isArray(s.accounts)) throw 0; state=normalise(s); currentAcct=null; save(); render(); toast("Audit file opened"); }catch(err){ toast("That is not a Footprint audit file. Choose the .json file you saved from the Report stage."); } };
+  r.readAsText(f); e.target.value="";
+});
+function route(){ const h=location.hash.slice(1); stage=STAGES.some(s=>s.id===h)?h:"brief"; armed=null; render(); window.scrollTo(0,0); }
+window.addEventListener("hashchange",route);
+
+/* ============================================================
+   REPORT. One list of blocks, rendered to Markdown or HTML.
+   ============================================================ */
+function label(list,v){ const f=list.find(x=>x[0]===v); return f?f[1]:""; }
+const WHEN=[["now","This week"],["soon","This month"],["later","Before I apply"]];
+function devBlocks(b,nameOf,tx){
+  const picks=state.accounts.filter(a=>a.develop);
+  if(!picks.length){ b.push({p:"No account chosen to develop."}); return; }
+  picks.forEach(a=>{ const d=a.dev||{};
+    b.push({h3:nameOf(a)});
+    b.push({table:{head:["",""],rows:[["Strength",tx(d.s||"")],["Opportunity",tx(d.o||"")],["Six-month goal",tx(d.a||"")],["Measure of success",tx(d.r||"")]]}});
+  });
+}
+function proBlocks(b,full){
+  if(!state.pros.length){ b.push({p:"No one chosen yet."}); return; }
+  state.pros.forEach(p=>{
+    b.push({h3:(p.name||"Unnamed")+(p.role?", "+p.role:"")});
+    const rows=[["How far ahead",label(LEVELS,p.level)],["Platform",p.platform+(full&&p.url?" "+p.url:"")],["Why this person",p.why]];
+    if(full) rows.push(["Their public bio",p.bio]);
+    rows.push(["Mix of their last 20 posts",p.mix],["I will take",p.steal],["I would not",p.avoid],["Only works for them because",p.only]);
+    b.push({table:{head:["",""],rows}});
+  });
+}
+function buildReport(){
+  const b=[], m=state.meta, t=totals(), same=x=>x;
+  b.push({h1:"Social media audit"+(m.name?": "+m.name:"")});
+  b.push({p:"Full audit. Date: "+(m.date||"not given")});
+  if(m.aim) b.push({p:"Aiming for: "+m.aim});
+  if(m.employer) b.push({p:"Measured against the social media rules of: "+m.employer});
+  b.push({p:`Summary: ${t.accounts} accounts, ${t.answered} of ${t.total} checks answered, ${t.work} need work, ${t.found} sweep finds, ${t.open} actions open.`});
+
+  b.push({h2:"1. Benchmark"});
+  proBlocks(b,true);
+
+  b.push({h2:"2. Search"});
+  b.push({list:SEARCH_TASKS.map(x=>(state.search.tasks[x.id]?"Done: ":"Not done: ")+x.html.replace(/<[^>]+>/g,""))});
+  SEARCH_FIELDS.forEach(f=>{ b.push({h3:f.label}); b.push({ans:state.search.notes[f.id]||"No answer."}); });
+
+  b.push({h2:"3. Accounts and baseline"});
+  if(state.accounts.length){
+    b.push({table:{head:["Platform","Handle","Type","What it is for","Visibility","Last posted","Enjoy /5","Useful /5","Decision","Why"],rows:state.accounts.map(a=>[a.platform,a.handle,label(ROLES,a.role),a.purpose,label(VISIBILITY,a.visibility),a.lastPost,a.enjoy,a.utility,label(DECISIONS,a.decision),a.why])}});
+    state.accounts.filter(a=>(a.bio||"").trim()).forEach(a=>{ b.push({h3:acctName(a)+": public bio at the date of audit"}); b.push({ans:a.bio}); });
+    const nums=state.accounts.filter(a=>a.nums && Object.values(a.nums).some(v=>String(v||"").trim()));
+    if(nums.length){ b.push({h3:"Numbers at the date of audit"}); b.push({table:{head:["Account","Followers","Following","Posts"],rows:nums.map(a=>[acctName(a),a.nums.followers||"",a.nums.following||"",a.nums.posts||""])}}); }
+  } else b.push({p:"No accounts listed."});
+
+  b.push({h2:"4. Checks"});
+  state.accounts.forEach(a=>{
+    const c=countsFor(a);
+    b.push({h3:`${acctName(a)} (${c.y} yes, ${c.p} partly, ${c.n} no, ${c.na} n/a, ${c.blank} unanswered)`});
+    b.push({table:{head:["Area","Check","Result","Evidence"],rows:groupsFor(a).flatMap(g=>g.items.map(it=>{ const ch=a.checks[it.id]||{}; return [g.group,it.q,label(ANSWERS,ch.v)||"Unanswered",ch.note||""]; }))}});
+  });
+
+  b.push({h2:"5. Sweep"});
+  b.push({table:{head:["Area","Result","Notes"],rows:SWEEP.map(s=>{ const sw=state.sweep[s.id]||{}; return [s.q,label(SWEEP_ANSWERS,sw.v)||"Not checked",sw.note||""]; })}});
+
+  b.push({h2:"6. Action plan"});
+  if(state.actions.length) b.push({table:{head:["Action","When","Due","Status"],rows:state.actions.map(a=>[a.text,label(WHEN,a.priority),a.due||"",a.done?"Done":"Open"])}});
+  else b.push({p:"No actions recorded."});
+
+  b.push({h2:"7. Build"});
+  devBlocks(b,acctName,same);
+
+  b.push({h2:"8. Reflection"});
+  REFLECT.forEach(r=>{ b.push({h3:r.q}); b.push({ans:state.reflect[r.id]||"No answer."}); });
+  return b;
+}
+/* Submission summary: decisions, reasons, plans, and only the examples the student ticks. */
+function scrub(text){
+  text=String(text==null?"":text);
+  if(state.submit.handles) return text;
+  const bits=[];
+  state.accounts.filter(a=>(a.handle||"").trim()).forEach(a=>{ text=text.split(acctName(a)).join(publicName(a)); });
+  state.accounts.forEach(a=>{ [a.url,a.handle,(a.handle||"").replace(/^@/,"")].forEach(h=>{ h=(h||"").trim(); if(h.length>=3) bits.push(h); }); });
+  bits.sort((x,y)=>y.length-x.length).forEach(h=>{ text=text.split(h).join("[account]"); });
+  return text;
+}
+function publicName(a){
+  if(state.submit.handles) return acctName(a);
+  const same=state.accounts.filter(x=>x.platform===a.platform);
+  return a.platform+(same.length>1?" ("+(same.indexOf(a)+1)+")":"");
+}
+function shareCandidates(){
+  const out=[];
+  state.accounts.forEach(a=>critsFor(a).forEach(it=>{ const ch=a.checks[it.id]||{};
+    if(ch.v && (ch.note||"").trim()) out.push({key:a.id+"__"+it.id,acct:a,where:acctName(a),q:it.q,result:label(ANSWERS,ch.v),note:ch.note}); }));
+  SWEEP.forEach(s=>{ const sw=state.sweep[s.id]||{};
+    if(sw.v && (sw.note||"").trim()) out.push({key:"sweep__"+s.id,acct:null,where:"Sweep",q:s.q,result:label(SWEEP_ANSWERS,sw.v),note:sw.note}); });
+  return out;
+}
+function buildSummary(){
+  const b=[], m=state.meta, t=totals();
+  b.push({h1:"Social media audit: submission summary"});
+  b.push({p:(m.name?m.name+". ":"")+"Date of audit: "+(m.date||"not given")});
+  if(m.aim) b.push({p:"Aiming for: "+scrub(m.aim)});
+  b.push({p:`Scope: ${t.accounts} accounts audited, ${t.answered} of ${t.total} checks answered, ${t.work} marked No or Partly. ${t.sweepDone} of ${SWEEP.length} sweep areas checked, ${t.found} with something found. Detailed notes are held by the student.`});
+
+  b.push({h2:"1. Who I measured myself against"});
+  proBlocks(b,false);
+
+  b.push({h2:"2. Accounts and decisions"});
+  if(state.accounts.length) b.push({table:{head:["Account","Type","What it is for","Enjoy /5","Useful /5","Decision","Why"],rows:state.accounts.map(a=>[publicName(a),label(ROLES,a.role),scrub(a.purpose),a.enjoy,a.utility,label(DECISIONS,a.decision)||"Not decided",scrub(a.why)])}});
+  else b.push({p:"No accounts listed."});
+
+  b.push({h2:"3. Examples chosen by the student"});
+  const shared=shareCandidates().filter(c=>state.submit.share[c.key]);
+  if(shared.length) b.push({table:{head:["Where","Check","Result","Evidence"],rows:shared.map(c=>[c.acct?publicName(c.acct):"Sweep",c.q,c.result,scrub(c.note)])}});
+  else b.push({p:"No examples shared."});
+
+  b.push({h2:"4. Action plan"});
+  if(state.actions.length) b.push({table:{head:["Action","When","Due","Status"],rows:state.actions.map(a=>[scrub(a.text),label(WHEN,a.priority),a.due||"",a.done?"Done":"Open"])}});
+  else b.push({p:"No actions recorded."});
+
+  b.push({h2:"5. What I want to build"});
+  devBlocks(b,publicName,scrub);
+
+  if(state.submit.reflect){
+    b.push({h2:"6. Reflection"});
+    REFLECT.forEach(r=>{ b.push({h3:r.q}); b.push({ans:scrub(state.reflect[r.id]||"No answer.")}); });
+  }
+  return b;
+}
+function mdCell(s){ return String(s==null?"":s).replace(/\|/g,"\\|").replace(/\n+/g," "); }
+function blocksToMD(bl){
+  return bl.map(b=>{
+    if(b.h1) return "# "+b.h1;
+    if(b.h2) return "## "+b.h2;
+    if(b.h3) return "### "+b.h3;
+    if(b.p) return b.p;
+    if(b.ans) return b.ans;
+    if(b.list) return b.list.map(x=>"- "+x).join("\n");
+    if(b.table) return "| "+b.table.head.join(" | ")+" |\n|"+b.table.head.map(()=>" --- |").join("")+"\n"+b.table.rows.map(r=>"| "+r.map(mdCell).join(" | ")+" |").join("\n");
+    return "";
+  }).join("\n\n")+"\n";
+}
+function blocksToHTML(bl){
+  return bl.map(b=>{
+    if(b.h1) return `<h1>${esc(b.h1)}</h1>`;
+    if(b.h2) return `<h2>${esc(b.h2)}</h2>`;
+    if(b.h3) return `<h3>${esc(b.h3)}</h3>`;
+    if(b.p) return `<p>${esc(b.p)}</p>`;
+    if(b.ans) return `<p class="ans">${esc(b.ans)}</p>`;
+    if(b.list) return `<ul>${b.list.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`;
+    if(b.table) return `<table><thead><tr>${b.table.head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${b.table.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    return "";
+  }).join("\n");
+}
+function curBlocks(){ return reportMode==="submit"?buildSummary():buildReport(); }
+function curStem(){ return fileStem()+(reportMode==="submit"?"-summary":"-full"); }
+function reportDoc(blocks){
+  return `<!DOCTYPE html><html lang="en-GB"><head><meta charset="utf-8"><title>Social media audit${state.meta.name?": "+esc(state.meta.name):""}</title><style>body{font:11pt/1.45 Arial,Helvetica,sans-serif;color:#111;max-width:820px;margin:32px auto;padding:0 20px}h1{font-size:20pt;margin:0 0 8px}h2{font-size:14pt;margin:26px 0 8px;border-top:1px solid #999;padding-top:12px}h3{font-size:11.5pt;margin:16px 0 6px}p{margin:0 0 8px}.ans{white-space:pre-wrap}table{border-collapse:collapse;width:100%;font-size:9.5pt;margin:6px 0 12px}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee}</style></head><body>${blocksToHTML(blocks)}</body></html>`;
+}
+function fileStem(){ const n=(state.meta.name||"audit").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"audit"; return "social-audit-"+n; }
+
+/* ============================================================
+   SAVE, COPY, TOAST
+   Hosted inside Claude, files go through its download prompt.
+   Anywhere else (GitHub Pages, a local file) a normal browser download is used.
+   ============================================================ */
+async function saveFile(filename,text){
+  let ns=null;
+  if(window.claude && typeof window.claude.use==="function"){ try{ ns=await window.claude.use("downloads"); }catch(e){ ns=null; } }
+  if(ns){
+    try{ await ns.save({filename,data:text}); toast("Saved "+filename); }
+    catch(err){ if(err && err.code==="declined") return; toast("Could not save a file here. Use Copy report text instead."); }
+    return;
+  }
+  try{
+    const url=URL.createObjectURL(new Blob([text],{type:"application/octet-stream"}));
+    const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ toast("Could not save a file here. Use Copy report text instead."); }
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); toast("Report copied. Paste it into a document."); }
+  catch(e){ toast("Copying was blocked by the browser. Download the report instead."); }
+}
+let toastTimer=null;
+function toast(msg){
+  let t=document.querySelector(".toast"); if(!t){ t=document.createElement("div"); t.className="toast"; t.setAttribute("role","status"); document.body.appendChild(t); }
+  t.textContent=msg; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(),4500);
+}
+
+/* ============================================================
+   WORKED EXAMPLE (fictional)
+   ============================================================ */
+function exampleState(){
+  return {meta:{name:"Alex Example (worked example)",date:new Date().toISOString().slice(0,10),aim:"Local democracy reporter covering Greater Manchester",employer:"A regional broadcaster"},
+    search:{tasks:{t1:true,t2:true,t3:true,t4:false,t5:false},notes:{first:"LinkedIn is the top result, then a 2019 student radio page, then an Instagram account that is not mine.",missing:"None of my published council stories appear. No portfolio.",notyou:"An estate agent in Leeds with the same name and an active X account.",surprise:"A Tumblr from sixth form is still live under my old username."}},
+    accounts:[
+      {id:"ex1",platform:"LinkedIn",handle:"alex-example",url:"",role:"professional",visibility:"public",lastPost:"",decision:"fix",why:"It ranks first, so it has to do more work.",purpose:"Where editors and employers check who I am",bio:"Student at university | Aspiring journalist | Open to opportunities",enjoy:"2",utility:"4",nums:{followers:"112",following:"340",posts:"6"},develop:true,dev:{s:"It already ranks first when anyone searches my name.",o:"Local editors and press officers are active here and I follow almost none of them.",a:"A profile that reads as a working reporter and shows three published council stories.",r:"Three published pieces linked from the profile, 30 relevant local connections, and one shift or commission that came through it."},checks:{id_name:{v:"y",note:"Matches byline"},id_photo:{v:"p",note:"Graduation photo from 2022"},id_bio:{v:"n",note:"Headline still says 'Student at university'"},id_link:{v:"n",note:"No link"},id_contact:{v:"y",note:"Email in contact info"},out_recent:{v:"n",note:"Last post four months ago"},se_2fa:{v:"n",note:"Off"},se_pw:{v:"p",note:"Unique, but not in a manager"}}},
+      {id:"ex2",platform:"X",handle:"@alexwrites",url:"",role:"mixed",visibility:"public",lastPost:"",decision:"",why:"",purpose:"Following council and transport news, and football",bio:"MA journalism student. Mostly here for the football.",enjoy:"4",utility:"3",checks:{out_ratio:{v:"p",note:"7 of last 20 about journalism; 9 about football"},pr_verify:{v:"n",note:"Reposted a claim about a councillor that turned out to be wrong"},pr_correct:{v:"n",note:"Deleted it without saying so"},se_2fa:{v:"y",note:"Authenticator app"}}},
+      {id:"ex3",platform:"Instagram",handle:"@alex.eg",url:"",role:"personal",visibility:"private",lastPost:"",decision:"keep",why:"Friends and family only.",purpose:"Friends and family",enjoy:"5",utility:"1",checks:{bo_locked:{v:"y",note:"Tested signed out: profile photo and name only"},bo_link:{v:"p",note:"Same profile photo as X"},se_tags:{v:"n",note:"Anyone can tag me"}}}
+    ],
+    pros:[{id:"pr1",name:"Sam Sample (fictional)",role:"Local democracy reporter, a regional daily",level:"near",platform:"X",url:"",why:"Three years out of an MA and doing the exact job I want, on a patch next to mine.",bio:"Local democracy reporter. Councils, planning, buses. Tips welcome, DMs open.",mix:"11 own stories, 4 sharing colleagues' work, 4 replies to councillors and readers, 1 personal.",steal:"Every story post says what was decided and what happens next, not just the headline.",avoid:"Live-posting from meetings with no follow-up. Half the threads never link to the finished story.",only:"Councillors reply because they already know the title. I would not get those answers yet."}],
+    sweep:{sw_old:{v:"found",note:"Three posts from 2018 I would not want read out in an interview"},sw_ghosts:{v:"found",note:"Tumblr under old username"},sw_likes:{v:"clear",note:"Likes are private on X"}},
+    actions:[], reflect:{r1:"I expected them to find nothing much. They found LinkedIn describing me as a student and no evidence that I have ever reported anything."}};
+}
+
+load();
+route();
+</script>
+</body>
+</html>
